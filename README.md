@@ -7,15 +7,15 @@ achieving O(1) lookup instead of linear scanning.
 
 This project was born from the ideas pioneered by
 [RitzDaCat](https://github.com/RitzDaCat) in
-[scx_cake](https://github.com/RitzDaCat/scx_cake) — a sched_ext BPF scheduler of extraordinary originality and ambition.
-Where most scheduler projects (including mine) iterate on well-known designs, scx_cake charted its own course: a from-scratch architecture that boldly rethinks how scheduling decisions should be made.
+[scx_cake](https://github.com/RitzDaCat/scx_cake) — a sched_ext BPF scheduler of extraordinary originality and ambition.  
+Where most scheduler projects (including mine) iterate on well-known designs, scx_cake charted its own course: a from-scratch architecture that boldly rethinks how scheduling decisions should be made.  
 The creative vision and technical depth behind scx_cake are truly remarkable, and studying it was a catalyst for exploring what a similar bitmask-driven approach could look like inside the mainline CFS code path.
 
 POC Selector distills one specific insight from scx_cake — fast idle-CPU selection via cached bitmasks — and transplants it into the kernel's `select_idle_cpu()` hot path as a lightweight, non-invasive patch.
 
 ## How It Works
 
-POC Selector maintains **per-LLC `atomic64_t` bitmasks** that track which CPUs (and which physical cores) are idle.
+POC Selector maintains **per-LLC `atomic64_t` bitmasks** that track which CPUs (and which physical cores) are idle.  
 When the scheduler needs an idle CPU for task wakeup, it consults these bitmasks instead of scanning every CPU in the domain.
 
 ```
@@ -61,7 +61,7 @@ cd /path/to/linux-6.18.3
 git apply /path/to/poc-selector/patches/0001-6.18.3-poc-selector-v1.0.patch
 ```
 
-After building and booting the patched kernel, the feature is enabled by default.
+After building and booting the patched kernel, the feature is enabled by default.  
 Toggle at runtime:
 
 ```bash
