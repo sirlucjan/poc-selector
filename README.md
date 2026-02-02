@@ -21,7 +21,7 @@ POC Selector maintains **per-LLC `atomic64_t` bitmasks** that track which CPUs (
 When the scheduler needs an idle CPU for task wakeup, it consults these bitmasks instead of scanning every CPU in the domain.
 
 ```
-Fast Path (per LLC, <= 64 CPUs):
+Fast Path (per LLC, <= 128 CPUs):
 
   Level 0 — Saturation check           ~5 cycles
     mask == 0  →  no idle CPUs, bail out immediately
@@ -34,7 +34,7 @@ Fast Path (per LLC, <= 64 CPUs):
     fallback: idle-cpu mask            →  first idle logical CPU
 ```
 
-When the fast path cannot handle the request (LLC > 64 CPUs, restricted affinity, etc.), the standard `select_idle_cpu()` takes over transparently.
+When the fast path cannot handle the request (LLC > 128 CPUs, restricted affinity, etc.), the standard `select_idle_cpu()` takes over transparently.
 
 ### Key properties
 
@@ -42,6 +42,14 @@ When the fast path cannot handle the request (LLC > 64 CPUs, restricted affinity
 - **SMT-aware** — prefers idle physical cores over idle SMT siblings
 - **Zero fairness impact** — only changes *where* a task is placed, not scheduling order
 - **Runtime toggle** — `sysctl kernel.sched_poc_selector` (0/1, default 1)
+
+## Requirements / Limitations
+
+- **Kernel**: Linux kernel built with `CONFIG_SCHED_POC_SELECTOR=y` (default)
+- **SMP**: Requires `CONFIG_SMP` (multi-processor kernel)
+- **Max 128 logical CPUs per LLC**: The bitmask is backed by 2 × `atomic64_t` words (`POC_MASK_WORDS_MAX = 2`), covering up to 128 CPUs per Last-Level Cache domain
+- **Graceful fallback**: When the LLC contains more than 128 CPUs, a task has restricted CPU affinity (`taskset`, `cpuset`, etc.), or no idle CPUs exist in the LLC, the selector transparently falls back to the standard `select_idle_cpu()` — no error, no performance penalty beyond losing the fast path
+- **Runtime toggle**: Can be disabled at runtime via `sysctl kernel.sched_poc_selector=0`
 
 ## Benchmark
 
