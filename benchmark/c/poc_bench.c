@@ -32,6 +32,97 @@
 #include <stdbool.h>
 
 /* ------------------------------------------------------------------ */
+/*  System information                                                 */
+/* ------------------------------------------------------------------ */
+
+struct hw_features {
+	const char *popcnt;
+	const char *ctz;
+	const char *ptselect;
+};
+
+static char cpu_model_name[256] = "Unknown";
+
+static void read_cpu_model(void)
+{
+	FILE *f = fopen("/proc/cpuinfo", "r");
+	if (!f)
+		return;
+	char line[512];
+	while (fgets(line, sizeof(line), f)) {
+		if (strncmp(line, "model name", 10) == 0) {
+			char *val = strchr(line, ':');
+			if (val) {
+				val++;
+				while (*val == ' ' || *val == '\t')
+					val++;
+				size_t len = strlen(val);
+				if (len > 0 && val[len - 1] == '\n')
+					val[len - 1] = '\0';
+				snprintf(cpu_model_name,
+					 sizeof(cpu_model_name), "%s", val);
+				break;
+			}
+		}
+	}
+	fclose(f);
+}
+
+#if defined(__x86_64__) || defined(__i386__)
+#include <cpuid.h>
+static struct hw_features detect_hw_features(void)
+{
+	struct hw_features hw = { "?", "?", "?" };
+	unsigned int eax, ebx, ecx, edx;
+
+	if (__get_cpuid(1, &eax, &ebx, &ecx, &edx))
+		hw.popcnt = (ecx & (1U << 23)) ? "POPCNT" : "SW";
+
+	if (__get_cpuid_count(7, 0, &eax, &ebx, &ecx, &edx)) {
+		hw.ctz      = (ebx & (1U << 3)) ? "TZCNT" : "BSF";
+		hw.ptselect = (ebx & (1U << 8)) ? "PDEP"  : "SW";
+	}
+	return hw;
+}
+
+#elif defined(__aarch64__)
+static struct hw_features detect_hw_features(void)
+{
+	return (struct hw_features){ "CNT", "RBIT+CLZ", "SW" };
+}
+
+#else
+static struct hw_features detect_hw_features(void)
+{
+	return (struct hw_features){ "?", "?", "?" };
+}
+#endif
+
+static int count_physical_cores(void)
+{
+	int ncpus_conf = get_nprocs_conf();
+	int count = 0;
+	char path[256], buf[64];
+
+	for (int i = 0; i < ncpus_conf; i++) {
+		snprintf(path, sizeof(path),
+			 "/sys/devices/system/cpu/cpu%d/topology/"
+			 "thread_siblings_list", i);
+		FILE *f = fopen(path, "r");
+		if (!f)
+			continue;
+		if (fgets(buf, sizeof(buf), f)) {
+			int first = -1;
+			sscanf(buf, "%d", &first);
+			if (first == i)
+				count++;
+		}
+		fclose(f);
+	}
+	return count > 0 ? count : get_nprocs();
+}
+
+/* ------------------------------------------------------------------ */
 /*  Constants                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -509,8 +600,16 @@ int main(int argc, char *argv[])
 	/* Lock memory to avoid page-fault noise */
 	mlockall(MCL_CURRENT | MCL_FUTURE);
 
+	/* Detect and display system information */
+	read_cpu_model();
+	struct hw_features hw = detect_hw_features();
+	int phys_cores = count_physical_cores();
+
 	printf("=== POC Selector Microbenchmark ===\n");
-	printf("System: %d CPUs\n", ncpus);
+	printf("CPU: %s\n", cpu_model_name);
+	printf("HW:  POPCNT=%s  CTZ=%s  PTSelect=%s\n",
+	       hw.popcnt, hw.ctz, hw.ptselect);
+	printf("     %d CPUs online, %d cores\n", ncpus, phys_cores);
 
 	int poc_val = poc_selector_read();
 	if (poc_val >= 0)
