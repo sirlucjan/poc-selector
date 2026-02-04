@@ -108,7 +108,7 @@ fn main() {
 
     // Install SIGINT handler (Ctrl+C before raw mode / during calibration)
     unsafe {
-        libc::signal(libc::SIGINT, handle_sigint as libc::sighandler_t);
+        libc::signal(libc::SIGINT, handle_sigint as *const () as libc::sighandler_t);
     }
 
     // Pre-check sysctl: readable AND writable?
