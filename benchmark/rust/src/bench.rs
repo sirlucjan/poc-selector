@@ -37,10 +37,11 @@ fn shadow_thread(ctx: &ShadowCtx) {
                 ctx.ack.store(1, Ordering::Release);
             }
         }
-        // Busy-poll with low overhead
-        for _ in 0..1000u32 {
+        // Short spin then yield to allow woken workers to run immediately
+        for _ in 0..100u32 {
             core::hint::spin_loop();
         }
+        unsafe { libc::sched_yield(); }
     }
 }
 

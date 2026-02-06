@@ -51,6 +51,15 @@ fn is_quit_event(ev: &Event) -> bool {
 // CLI
 // ---------------------------------------------------------------------------
 
+fn default_threads() -> usize {
+    1
+}
+
+fn default_background() -> usize {
+    let ncpus = unsafe { libc::sysconf(libc::_SC_NPROCESSORS_ONLN) as usize };
+    (ncpus as f64).log2().round() as usize
+}
+
 #[derive(Parser)]
 #[command(name = "poc-bench", about = "POC Selector Benchmark with TUI")]
 struct Cli {
@@ -58,13 +67,13 @@ struct Cli {
     #[arg(short, long, default_value_t = 0)]
     iterations: usize,
 
-    /// Override worker thread count
-    #[arg(short = 't', long)]
-    threads: Option<usize>,
+    /// Worker thread count
+    #[arg(short = 't', long, default_value_t = default_threads())]
+    threads: usize,
 
-    /// Override background thread count
-    #[arg(short, long)]
-    background: Option<usize>,
+    /// Background thread count
+    #[arg(short, long, default_value_t = default_background())]
+    background: usize,
 
     /// Number of comparison rounds
     #[arg(short, long, default_value_t = DEFAULT_ROUNDS)]
@@ -85,8 +94,8 @@ fn main() {
     let params = BenchParams::with_overrides(
         sysinfo.ncpus,
         sysinfo.physical_cores,
-        cli.threads,
-        cli.background,
+        Some(cli.threads),
+        Some(cli.background),
     );
 
     // Lock memory
