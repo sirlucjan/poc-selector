@@ -328,7 +328,7 @@ The benchmark requires root to toggle `/proc/sys/kernel/sched_poc_selector`.
 
 ## Special Thanks
 
-RitzDaCat - of course, for giving birth to scx_cake inspiring me of implementing the selector.
+RitzDaCat - of course, for giving birth to scx_cake inspiring me of implementing the selector.  
 Mario Roy - for advising me about the PTSelect algorithm use
 
 ## License
