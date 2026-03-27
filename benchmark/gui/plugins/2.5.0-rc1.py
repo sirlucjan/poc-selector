@@ -1,4 +1,4 @@
-"""POC Selector 2.5.0 plugin — target_sticky + smt_fallback + early_clear toggles."""
+"""POC Selector 2.5.0-rc1 plugin — target_sticky + smt_fallback + early_clear toggles."""
 
 from PyQt5.QtWidgets import QCheckBox, QHBoxLayout
 import os
